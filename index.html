@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileShelf — Floating File Clipboard for macOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,200;0,300;0,400;1,200;1,300;1,400&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0d0f14;
+  --ink2: #252830;
+  --paper: #f4f5f7;
+  --paper2: #eaecf0;
+  --paper3: #dde0e8;
+  --muted: #7a7e8a;
+  --muted2: #adb1bc;
+  /* icon blue shelf accent */
+  --amber: #3d6fd4;
+  --amber-light: #6690e8;
+  --amber-bg: #eef2fc;
+  --amber-border: rgba(61,111,212,0.22);
+  /* icon card colors */
+  --card-orange: #e8612a;
+  --card-green: #2faa6e;
+  --card-blue: #5b8de8;
+  --green: #2faa6e;
+  --shelf-dark: #1a1b1f;
+  --shelf-surface: #22242a;
+  --shelf-border: rgba(255,255,255,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Geist', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+/* NAV */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(245,242,238,0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--paper3);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Fraunces', serif;
+  font-size: 1.25rem;
+  font-weight: 300;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.logo-mark {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logo-mark img {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+nav ul { display: flex; gap: 28px; list-style: none; }
+
+nav ul a {
+  font-size: 0.83rem; color: var(--muted);
+  text-decoration: none; font-weight: 400;
+  transition: color 0.15s; letter-spacing: 0.005em;
+}
+
+nav ul a:hover { color: var(--ink); }
+
+.nav-dl {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--ink); color: var(--paper);
+  padding: 8px 18px; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 500;
+  text-decoration: none; transition: all 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.nav-dl:hover {
+  background: var(--ink2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(15,14,13,0.2);
+}
+
+/* HERO */
+.hero {
+  padding: 100px 48px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  gap: 60px;
+  align-items: center;
+  min-height: calc(90vh - 60px);
+}
+
+.hero-left { padding-bottom: 80px; }
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--amber);
+  margin-bottom: 28px;
+  animation: riseIn 0.5s ease both;
+}
+
+.eyebrow-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--amber);
+  animation: throb 2.5s ease infinite;
+}
+
+@keyframes throb { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+.hero-h1 {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(3rem, 5.5vw, 5.5rem);
+  font-weight: 200; line-height: 1.0;
+  letter-spacing: -0.04em; color: var(--ink);
+  margin-bottom: 10px;
+  animation: riseIn 0.5s ease 0.08s both;
+}
+
+.hero-h1 em { font-style: italic; color: var(--amber); }
+
+.hero-tagline {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  font-weight: 200; font-style: italic;
+  color: #6e7480; letter-spacing: -0.02em;
+  margin-bottom: 32px;
+  animation: riseIn 0.5s ease 0.14s both;
+}
+
+.hero-body {
+  font-size: 1rem; color: #555a66;
+  font-weight: 400; line-height: 1.75;
+  max-width: 420px; margin-bottom: 44px;
+  animation: riseIn 0.5s ease 0.2s both;
+}
+
+.hero-ctas {
+  display: flex; gap: 12px; align-items: center;
+  margin-bottom: 44px;
+  animation: riseIn 0.5s ease 0.26s both;
+}
+
+.btn-dl {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--ink); color: var(--paper);
+  padding: 13px 26px; border-radius: 9px;
+  font-weight: 500; font-size: 0.9rem;
+  text-decoration: none; transition: all 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.btn-dl:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(15,14,13,0.25);
+}
+
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--muted); padding: 13px 20px;
+  border-radius: 9px; font-size: 0.88rem;
+  text-decoration: none; border: 1px solid var(--paper3);
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover { border-color: var(--muted2); color: var(--ink); }
+
+.hero-meta {
+  display: flex; gap: 20px;
+  animation: riseIn 0.5s ease 0.32s both;
+}
+
+.meta-chip {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem; color: var(--muted); letter-spacing: 0.04em;
+}
+
+.meta-chip-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--green);
+}
+
+/* HERO RIGHT */
+.hero-right {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px;
+  padding-bottom: 80px;
+  animation: riseIn 0.7s ease 0.3s both;
+}
+
+.hero-icon-wrap { }
+
+.hero-icon {
+  width: 72px; height: 72px;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.12),
+    0 6px 24px rgba(61,111,212,0.18),
+    0 20px 48px rgba(0,0,0,0.15);
+  display: block;
+}
+
+.hero-shelf-row { display: contents; }
+
+/* ---- Real app shelf widget ---- */
+.shelf-widget {
+  width: 228px;
+  background: #1c1c1e;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow:
+    0 0 0 0.5px rgba(0,0,0,0.8),
+    0 30px 70px rgba(0,0,0,0.55),
+    0 8px 20px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+/* Top chrome: just the 3 window control dots, no border below */
+.sw-bar {
+  display: flex; align-items: center; gap: 5px;
+  padding: 10px 10px 6px;
+}
+
+.tl { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.tl-r { background: #ff5f57; }
+.tl-y { background: #febc2e; opacity: 0.4; }
+.tl-g { background: #28c840; opacity: 0.4; }
+
+.sw-drag-hint { display: none; }
+
+/* 3-column file grid, no backgrounds on cells */
+.sw-files {
+  padding: 6px 8px 4px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  min-height: 160px;
+  align-content: start;
+}
+
+.sw-file {
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  padding: 8px 4px 6px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  cursor: pointer; transition: all 0.15s;
+  position: relative;
+  animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.sw-file:nth-child(1){animation-delay:0.5s}
+.sw-file:nth-child(2){animation-delay:0.62s}
+.sw-file:nth-child(3){animation-delay:0.74s}
+.sw-file:nth-child(4){animation-delay:0.86s}
+.sw-file:nth-child(5){animation-delay:0.98s}
+
+.sw-file:hover { background: rgba(255,255,255,0.06); }
+/* Selected: blue highlight like real app */
+.sw-file.selected {
+  background: rgba(50,130,246,0.2);
+  border-color: rgba(50,130,246,0.55);
+}
+
+.close-x {
+  position: absolute; top: -4px; right: -4px;
+  width: 15px; height: 15px;
+  background: #ff5f57; border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  font-size: 0.5rem; color: white; font-weight: 800;
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  line-height: 1;
+}
+
+.sw-file:hover .close-x { display: flex; }
+
+/* macOS-style document icon: white shape with folded corner */
+.sw-file-icon {
+  width: 42px; height: 50px;
+  position: relative; flex-shrink: 0;
+}
+
+/* Main white document body */
+.sw-file-icon .doc-body {
+  position: absolute; inset: 0;
+  background: #e8e8ea;
+  border-radius: 4px 8px 4px 4px;
+  border: 0.5px solid rgba(0,0,0,0.15);
+}
+
+/* Folded corner */
+.sw-file-icon .doc-fold {
+  position: absolute; top: 0; right: 0;
+  width: 12px; height: 12px;
+  background: #c8c8cc;
+  border-radius: 0 0 0 4px;
+  border-left: 0.5px solid rgba(0,0,0,0.1);
+  border-bottom: 0.5px solid rgba(0,0,0,0.1);
+}
+
+/* Colored card variants matching icon */
+.sw-file-icon.fi-orange .doc-body { background: var(--card-orange); border-color: rgba(0,0,0,0.1); }
+.sw-file-icon.fi-orange .doc-fold { background: rgba(0,0,0,0.2); }
+.sw-file-icon.fi-green .doc-body  { background: var(--card-green); border-color: rgba(0,0,0,0.1); }
+.sw-file-icon.fi-green .doc-fold  { background: rgba(0,0,0,0.2); }
+.sw-file-icon.fi-blue .doc-body   { background: var(--card-blue); border-color: rgba(0,0,0,0.1); }
+.sw-file-icon.fi-blue .doc-fold   { background: rgba(0,0,0,0.2); }
+
+/* Content lines inside the doc — white on colored cards */
+.sw-file-icon .doc-lines {
+  position: absolute;
+  top: 16px; left: 5px; right: 5px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+.sw-file-icon .doc-line {
+  height: 2px; border-radius: 1px;
+  background: rgba(0,0,0,0.15);
+}
+
+.sw-file-icon.fi-orange .doc-line,
+.sw-file-icon.fi-green .doc-line,
+.sw-file-icon.fi-blue .doc-line { background: rgba(255,255,255,0.4); }
+
+.sw-file-icon .doc-line:nth-child(1) { width: 80%; }
+.sw-file-icon .doc-line:nth-child(2) { width: 65%; }
+.sw-file-icon .doc-line:nth-child(3) { width: 75%; }
+.sw-file-icon .doc-line:nth-child(4) { width: 50%; }
+
+/* Screenshot thumbnail variant */
+.sw-file-icon.fi-screenshot .doc-body {
+  background: #2a3a4a;
+  border: none;
+}
+
+.sw-file-icon.fi-screenshot .doc-fold {
+  background: #1e2e3e;
+}
+
+.sw-file-icon.fi-screenshot .doc-lines { display: none; }
+
+.sw-file-icon.fi-screenshot .doc-thumb {
+  position: absolute;
+  inset: 3px 3px 4px 3px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #3a5a7a 0%, #2a4a6a 50%, #1e3a5a 100%);
+  overflow: hidden;
+}
+
+/* macOS icon variant (for .dmg etc) */
+.sw-file-icon.fi-dmg .doc-body { background: #d8dde8; }
+.sw-file-icon.fi-dmg .doc-fold { background: #b8bec8; }
+
+/* Selected doc: just a blue ring — don't override the card color */
+.sw-file.selected .doc-body { box-shadow: 0 0 0 1.5px rgba(50,130,246,0.5); }
+.sw-file.selected:not([class*="fi-"]) .doc-body { background: #d0e4f8; border-color: rgba(50,130,246,0.3); }
+.sw-file.selected:not([class*="fi-"]) .doc-fold { background: #b0cce8; }
+
+.sw-file-name {
+  font-family: -apple-system, 'Geist', sans-serif;
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 64px; text-align: center;
+  letter-spacing: -0.01em;
+}
+
+/* Empty area below files with subtle indicator dot */
+.sw-empty-space {
+  height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.sw-indicator-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+}
+
+/* Bottom action bar: icon + label buttons, centered */
+.sw-actions {
+  padding: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: stretch;
+}
+
+.sw-btn {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 8px 0;
+  font-family: -apple-system, 'Geist', sans-serif;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer; transition: all 0.15s;
+  border: none; background: none;
+}
+
+.sw-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); }
+.sw-btn:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
+
+.sw-btn svg { opacity: 0.6; }
+.sw-btn:hover svg { opacity: 1; }
+
+.sw-count { display: none; }
+.sw-btns { display: contents; }
+
+.shelf-kbd-hint {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Geist', sans-serif;
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0em;
+  animation: riseIn 0.4s ease 1.1s both;
+}
+
+kbd {
+  display: inline-flex; align-items: center;
+  background: white;
+  border: 1px solid var(--paper3);
+  border-bottom: 2px solid #c8ccd6;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  white-space: nowrap;
+}
+
+/* HOW IT WORKS SECTION */
+.how-section {
+  background: var(--shelf-dark);
+  padding: 80px 48px;
+}
+
+.how-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.how-header { text-align: center; }
+
+.how-header .section-label { color: var(--amber-light); margin-bottom: 12px; }
+
+.how-header .section-title {
+  color: rgba(255,255,255,0.92);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.how-header .section-title em { color: var(--amber-light); }
+
+/* FEATURES */
+.features-section {
+  padding: 100px 48px;
+  max-width: 1200px; margin: 0 auto;
+}
+
+.section-head { margin-bottom: 56px; }
+
+.section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.68rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 14px;
+}
+
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 200; line-height: 1.1;
+  letter-spacing: -0.035em; color: var(--ink);
+}
+
+.section-title em { font-style: italic; }
+
+.features-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--paper3);
+  border: 1px solid var(--paper3);
+  border-radius: 14px; overflow: hidden;
+}
+
+.feat {
+  background: var(--paper); padding: 32px 28px;
+  transition: background 0.2s;
+}
+
+.feat:hover { background: var(--paper2); }
+
+.feat-icon {
+  width: 38px; height: 38px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px; font-size: 1.1rem;
+}
+
+.feat-title {
+  font-size: 0.95rem; font-weight: 600;
+  letter-spacing: -0.015em; margin-bottom: 8px; color: var(--ink);
+}
+
+.feat-body {
+  font-size: 0.87rem; color: #555a66;
+  line-height: 1.7; font-weight: 400;
+}
+
+.feat-kbd {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 10px; padding: 3px 8px;
+  background: var(--paper2);
+  border: 1px solid var(--paper3);
+  border-radius: 5px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.65rem; color: var(--muted); letter-spacing: 0.03em;
+}
+
+/* KEYBOARD SECTION */
+.keyboard-section {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 100px 48px;
+}
+
+.keyboard-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 80px; align-items: start;
+}
+
+.kb-section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.68rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 14px;
+}
+
+.kb-title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 200; line-height: 1.1;
+  letter-spacing: -0.035em; margin-bottom: 20px;
+}
+
+.kb-title em { font-style: italic; color: var(--amber); }
+
+.kb-body {
+  font-size: 0.9rem; color: rgba(245,242,238,0.68);
+  line-height: 1.75; font-weight: 300;
+}
+
+.shortcuts-table { display: flex; flex-direction: column; gap: 2px; }
+
+.sc-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 7px; transition: background 0.15s;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.sc-row:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.1); }
+
+.sc-action { font-size: 0.85rem; color: rgba(245,242,238,0.82); font-weight: 400; }
+
+.sc-keys { display: flex; align-items: center; gap: 4px; }
+
+.sc-key {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-bottom: 2px solid rgba(0,0,0,0.35);
+  border-radius: 5px; padding: 3px 8px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem; color: rgba(255,255,255,0.75); letter-spacing: 0.02em;
+}
+
+.sc-key.hi {
+  background: rgba(61,111,212,0.22);
+  border-color: rgba(61,111,212,0.45);
+  border-bottom-color: rgba(61,111,212,0.6);
+  color: #8ab2f0;
+}
+
+.sc-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; }
+
+/* PERMISSIONS */
+.permissions-section {
+  padding: 80px 48px; max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 60px; align-items: start;
+}
+
+.perm-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+
+.perm-item {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px 18px;
+  background: var(--paper2);
+  border-radius: 10px; border: 1px solid var(--paper3);
+}
+
+.perm-icon {
+  flex-shrink: 0; width: 32px; height: 32px;
+  border-radius: 8px; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 0.9rem; margin-top: 1px;
+}
+
+.pi-opt { background: #eef6f0; }
+.pi-no { background: #fef2f2; }
+
+.perm-title {
+  font-size: 0.88rem; font-weight: 600; color: var(--ink);
+  letter-spacing: -0.01em; margin-bottom: 4px;
+}
+
+.perm-desc {
+  font-size: 0.83rem; color: #555a66;
+  font-weight: 400; line-height: 1.6;
+}
+
+.perm-tag {
+  display: inline-block; padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.6rem; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.tag-opt { background: #eef6f0; color: var(--green); }
+.tag-no { background: #fef2f2; color: #c0392b; }
+
+/* DOWNLOAD */
+.download-section {
+  padding: 100px 48px 120px;
+  text-align: center; position: relative; overflow: hidden;
+}
+
+.download-section::before {
+  content: '';
+  position: absolute; width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(200,119,58,0.07) 0%, transparent 65%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+
+.download-inner { position: relative; max-width: 560px; margin: 0 auto; }
+
+.dl-title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 200; line-height: 1.0;
+  letter-spacing: -0.04em; margin-bottom: 20px;
+}
+
+.dl-title em { font-style: italic; color: var(--amber); }
+
+.dl-body {
+  font-size: 0.97rem; color: #555a66;
+  font-weight: 400; line-height: 1.75; margin-bottom: 40px;
+}
+
+.dl-specs {
+  display: flex; gap: 20px; justify-content: center;
+  flex-wrap: wrap; margin-top: 24px;
+}
+
+.spec {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.68rem; color: var(--muted2); letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 6px;
+}
+
+.spec::before {
+  content: ''; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--green);
+}
+
+/* CHAI4ME */
+.chai-wrap {
+  margin-top: 48px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+}
+
+.chai-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: -0.01em;
+}
+
+/* FOOTER */
+footer {
+  padding: 28px 48px;
+  border-top: 1px solid var(--paper3);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.ft-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Fraunces', serif;
+  font-size: 1rem; font-weight: 300;
+  color: var(--muted); text-decoration: none;
+}
+
+.ft-center {
+  display: flex; align-items: center; gap: 28px;
+}
+
+.ft-links { display: flex; gap: 24px; align-items: center; }
+
+.ft-links a {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.7rem; color: var(--muted2);
+  text-decoration: none; letter-spacing: 0.05em; transition: color 0.15s;
+}
+
+.ft-links a:hover { color: var(--ink); }
+
+.ft-bmc img {
+  height: 28px; display: block; border-radius: 5px;
+  opacity: 0.85; transition: opacity 0.15s;
+}
+
+.ft-bmc:hover img { opacity: 1; }
+
+.ft-copy {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.65rem; color: var(--muted2); letter-spacing: 0.05em;
+}
+
+/* ===================== FLOW DEMO ===================== */
+.flow-demo {
+  width: 100%;
+  display: flex; flex-direction: column; gap: 16px;
+  padding-bottom: 8px;
+}
+
+.fd-step-label {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.fd-step-badge {
+  background: rgba(61,111,212,0.2);
+  border: 1px solid rgba(61,111,212,0.4);
+  color: #8ab4f8;
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 100px;
+  white-space: nowrap;
+}
+
+.fd-step-text {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem; font-weight: 200;
+  font-style: italic;
+  color: rgba(255,255,255,0.88); letter-spacing: -0.02em;
+  transition: opacity 0.3s;
+}
+
+/* Stage: the visual area */
+.fd-stage {
+  position: relative;
+  height: 260px;
+  background: #1a1b1f;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+/* Window chrome shared */
+.fd-win-bar {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.fd-win-title {
+  font-size: 0.6rem; color: rgba(255,255,255,0.3);
+  font-family: 'Geist', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em; margin-left: 6px;
+}
+
+.fd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.fd-dot-r { background: #ff5f57; }
+.fd-dot-y { background: #febc2e; }
+.fd-dot-g { background: #28c840; }
+.fd-dot.op { opacity: 0.35; }
+
+/* ---- Realistic macOS Finder ---- */
+.fd-finder {
+  position: absolute;
+  left: 10px; top: 14px;
+  width: 192px;
+  background: #2b2b2e;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: opacity 0.4s, transform 0.4s;
+  z-index: 2;
+}
+
+.fd-finder-toolbar {
+  display: flex; align-items: center;
+  flex: 1; gap: 6px; margin-left: 8px;
+}
+
+.fd-toolbar-nav {
+  display: flex; gap: 3px; align-items: center;
+  color: rgba(255,255,255,0.3);
+}
+
+.fd-toolbar-title {
+  font-size: 0.62rem; font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  font-family: -apple-system, 'Geist', sans-serif;
+  letter-spacing: 0.01em; flex: 1; text-align: center;
+}
+
+.fd-toolbar-search {
+  width: 18px; height: 14px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.3);
+}
+
+.fd-finder-body {
+  display: flex; flex: 1; overflow: hidden;
+}
+
+/* Sidebar */
+.fd-finder-sidebar {
+  width: 62px; flex-shrink: 0;
+  background: rgba(0,0,0,0.15);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 6px 0;
+  display: flex; flex-direction: column;
+}
+
+.fd-sb-section {
+  font-size: 0.5rem; font-weight: 600;
+  color: rgba(255,255,255,0.28);
+  font-family: 'Geist', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 4px 7px 3px;
+}
+
+.fd-sb-item {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 7px;
+  font-size: 0.57rem; color: rgba(255,255,255,0.5);
+  font-family: 'Geist', sans-serif;
+  font-weight: 400;
+  white-space: nowrap; overflow: hidden;
+  border-radius: 4px; margin: 0 3px;
+  transition: background 0.1s;
+  letter-spacing: -0.01em;
+}
+
+.fd-sb-item.active {
+  background: rgba(61,111,212,0.35);
+  color: rgba(255,255,255,0.85);
+}
+
+.fd-sb-item svg { flex-shrink: 0; opacity: 0.7; }
+
+/* File grid */
+.fd-finder-grid {
+  flex: 1;
+  padding: 8px 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  align-content: start;
+}
+
+.fd-grid-file {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 5px 3px 4px; border-radius: 5px;
+  cursor: default; transition: background 0.12s;
+}
+
+.fd-grid-file.fd-draggable { cursor: grab; }
+.fd-grid-file.fd-draggable:active { cursor: grabbing; }
+
+.fd-grid-file.dragging-source { opacity: 0.35; }
+
+.fd-grid-file:hover { background: rgba(255,255,255,0.06); }
+
+.fd-grid-icon {
+  width: 28px; height: 33px; position: relative; flex-shrink: 0;
+}
+
+.fd-grid-icon .fd-ficon-body {
+  position: absolute; inset: 0;
+  border-radius: 4px 7px 4px 4px;
+}
+
+.fd-grid-icon .fd-ficon-fold {
+  position: absolute; top: 0; right: 0;
+  width: 8px; height: 8px;
+  border-radius: 0 0 0 4px;
+  background: rgba(0,0,0,0.22);
+}
+
+.fd-grid-icon .fd-ficon-lines {
+  position: absolute; top: 11px; left: 4px; right: 4px;
+}
+
+.fd-grid-file span {
+  font-size: 0.54rem; font-family: 'Geist', sans-serif;
+  font-weight: 400;
+  color: rgba(255,255,255,0.65); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: -0.01em;
+}
+
+/* ficon-body size for grid icons */
+.fd-grid-icon .fd-ficon-body { width: 100%; height: 100%; }
+
+/* ---- Dragging file (floating clone) ---- */
+.fd-dragging-file {
+  position: absolute;
+  width: 52px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  opacity: 0; pointer-events: none; z-index: 10;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
+}
+
+.fd-dragging-file .fd-ficon-body { width: 30px; height: 36px; border-radius: 4px 7px 4px 4px; }
+.fd-dragging-file .fd-ficon-fold { width: 8px; height: 8px; }
+.fd-dragging-file .fd-ficon-lines { top: 12px; }
+
+.fd-dragging-file span {
+  font-size: 0.6rem; font-family: 'Geist', sans-serif;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85); text-align: center;
+  letter-spacing: -0.01em;
+}
+
+/* ---- FileShelf panel ---- */
+.fd-shelf {
+  position: absolute;
+  right: 16px; top: 14px;
+  width: 118px;
+  background: #1c1c1e;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex; flex-direction: column;
+  opacity: 0; transform: scale(0.9) translateY(-8px);
+  transition: opacity 0.35s cubic-bezier(0.34,1.3,0.64,1),
+              transform 0.35s cubic-bezier(0.34,1.3,0.64,1);
+  z-index: 5;
+}
+
+.fd-shelf.visible {
+  opacity: 1; transform: scale(1) translateY(0);
+}
+
+.fd-shelf-bar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 7px 8px 5px;
+}
+
+.fd-shelf-files {
+  padding: 8px 6px 4px;
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+/* hide drop zone when files are showing */
+.fd-shelf-files.has-files ~ .fd-shelf-drop { display: none; }
+
+.fd-shelf-drop {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  margin: 8px 8px 6px;
+  border: 1.5px dashed rgba(255,255,255,0.18);
+  border-radius: 10px; padding: 16px 8px;
+  color: rgba(255,255,255,0.35);
+  transition: all 0.2s;
+}
+
+.fd-shelf-drop svg { opacity: 0.5; }
+
+.fd-shelf-drop span {
+  font-size: 0.68rem; font-weight: 500;
+  font-family: 'Geist', sans-serif;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: -0.01em;
+}
+
+.fd-shelf-drop small {
+  font-size: 0.58rem;
+  font-family: 'Geist', sans-serif;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.01em;
+}
+
+.fd-shelf-drop.highlight {
+  border-color: rgba(61,111,212,0.7);
+  background: rgba(61,111,212,0.1);
+}
+
+.fd-shelf-drop.highlight svg { opacity: 1; stroke: #5b8de8; }
+.fd-shelf-drop.highlight span { color: rgba(100,160,240,0.9); }
+
+/* Individual file cell — no background, no border */
+.fd-shelf-file {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 2px 5px; border-radius: 6px;
+  cursor: pointer; transition: background 0.15s;
+}
+
+.fd-shelf-file:hover { background: rgba(255,255,255,0.06); }
+
+.fd-shelf-file span {
+  font-size: 0.52rem;
+  font-family: 'Geist', sans-serif;
+  font-weight: 400;
+  color: rgba(255,255,255,0.72); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: -0.01em;
+}
+
+/* Large macOS-style document icon */
+.fd-sficon {
+  width: 28px; height: 34px;
+  border-radius: 3px 8px 3px 3px;
+  position: relative; flex-shrink: 0;
+  background: #e8e8ea;
+  border: 0.5px solid rgba(0,0,0,0.12);
+}
+
+/* Folded corner */
+.fd-sficon::before {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 8px; height: 8px;
+  background: #c4c4c8;
+  border-radius: 0 0 0 4px;
+  border-left: 0.5px solid rgba(0,0,0,0.08);
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+}
+
+/* Content lines inside doc */
+.fd-sficon::after {
+  content: '';
+  position: absolute;
+  top: 12px; left: 4px; right: 4px;
+  height: 12px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.12) 0px,
+    rgba(0,0,0,0.12) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+
+/* Orange variant — matches icon app color */
+.fd-sficon.fd-file-orange {
+  background: #e8612a;
+  border-color: rgba(0,0,0,0.1);
+}
+.fd-sficon.fd-file-orange::before { background: rgba(0,0,0,0.25); }
+.fd-sficon.fd-file-orange::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.3) 0px,
+    rgba(255,255,255,0.3) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+
+.fd-sficon.fd-file-blue { background: #5b8de8; border-color: rgba(0,0,0,0.1); }
+.fd-sficon.fd-file-blue::before { background: rgba(0,0,0,0.25); }
+.fd-sficon.fd-file-blue::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.3) 0px,
+    rgba(255,255,255,0.3) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+
+.fd-sficon.fd-file-green { background: #2faa6e; border-color: rgba(0,0,0,0.1); }
+.fd-sficon.fd-file-green::before { background: rgba(0,0,0,0.25); }
+.fd-sficon.fd-file-green::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.3) 0px,
+    rgba(255,255,255,0.3) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+
+/* Indicator dot below files */
+.fd-shelf-dot-row {
+  display: flex; justify-content: center; padding: 3px 0 4px;
+}
+.fd-shelf-indicator {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+}
+
+.fd-new-file {
+  opacity: 0; transform: scale(0.7);
+  transition: opacity 0.3s, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.fd-new-file.show { opacity: 1; transform: scale(1); }
+
+.fd-shelf-actions {
+  display: flex; border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.fd-shelf-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 3px;
+  padding: 5px 0;
+  font-size: 0.6rem; font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  font-family: 'Geist', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.fd-shelf-btn:first-child { border-right: 1px solid rgba(255,255,255,0.07); }
+.fd-shelf-btn svg { opacity: 0.5; }
+
+/* ---- Shared file icon base (used in dragging, shelf, finder) ---- */
+.fd-ficon-body {
+  width: 22px; height: 26px;
+  border-radius: 3px 5px 3px 3px;
+  position: relative; flex-shrink: 0;
+}
+
+.fd-ficon-fold {
+  position: absolute; top: 0; right: 0;
+  width: 6px; height: 6px;
+  border-radius: 0 0 0 3px;
+}
+
+.fd-ficon-lines {
+  position: absolute; top: 9px; left: 3px; right: 3px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.fd-ficon-lines div {
+  height: 1.5px; border-radius: 1px;
+  background: rgba(255,255,255,0.35);
+}
+
+.fd-ficon-lines div:nth-child(1) { width: 80%; }
+.fd-ficon-lines div:nth-child(2) { width: 60%; }
+.fd-ficon-lines div:nth-child(3) { width: 70%; }
+
+/* file color variants */
+.fd-file-orange .fd-ficon-body { background: #e8612a; }
+.fd-file-orange .fd-ficon-fold { background: rgba(0,0,0,0.25); }
+.fd-file-blue .fd-ficon-body   { background: #5b8de8; }
+.fd-file-blue .fd-ficon-fold   { background: rgba(0,0,0,0.25); }
+.fd-file-green .fd-ficon-body  { background: #2faa6e; }
+.fd-file-green .fd-ficon-fold  { background: rgba(0,0,0,0.25); }
+
+/* ---- Mail compose window ---- */
+.fd-mail {
+  position: absolute;
+  left: 10px; bottom: 12px;
+  width: 160px;
+  background: #232326;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex; flex-direction: column;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.4s, transform 0.4s;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.fd-mail.visible { opacity: 1; transform: translateY(0); }
+
+.fd-mail-body {
+  display: flex; flex-direction: column;
+  flex: 1;
+}
+
+.fd-mail-field {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.fd-mail-label {
+  font-size: 0.55rem; font-weight: 500;
+  color: rgba(255,255,255,0.28);
+  font-family: 'Geist', sans-serif;
+  width: 34px; flex-shrink: 0; letter-spacing: 0.02em;
+}
+
+.fd-mail-val {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.65);
+  font-family: 'Geist', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.fd-mail-divider {
+  height: 1px; background: rgba(255,255,255,0.06);
+}
+
+.fd-mail-compose {
+  flex: 1; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 5px;
+  position: relative; min-height: 80px;
+}
+
+.fd-mail-line {
+  height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.07);
+}
+.fd-mail-line.w70 { width: 70%; }
+.fd-mail-line.w50 { width: 50%; }
+.fd-mail-line.w85 { width: 85%; }
+
+/* attachment chip after drop */
+.fd-mail-attachment {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; padding: 4px 8px;
+  margin-top: 4px;
+  opacity: 0; transform: scale(0.85);
+  transition: opacity 0.35s, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.fd-mail-attachment.show { opacity: 1; transform: scale(1); }
+
+.fd-attach-icon {
+  width: 16px; height: 19px;
+  border-radius: 2px 4px 2px 2px;
+  position: relative; flex-shrink: 0;
+}
+
+.fd-attach-icon .fd-ficon-fold { width: 5px; height: 5px; }
+
+.fd-mail-attachment span {
+  font-size: 0.55rem; font-family: 'Geist', sans-serif;
+  color: rgba(255,255,255,0.6); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.fd-mail-attachment svg { color: rgba(255,255,255,0.25); flex-shrink: 0; }
+
+.fd-drop-target {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  position: absolute; inset: 6px;
+  border: 1.5px dashed rgba(255,255,255,0.1);
+  border-radius: 6px;
+  font-size: 0.58rem; font-family: 'Geist', sans-serif;
+  font-weight: 500;
+  color: rgba(255,255,255,0.2);
+  opacity: 0; transition: opacity 0.3s;
+}
+
+.fd-drop-target svg { opacity: 0.4; }
+
+.fd-drop-target.show {
+  opacity: 1;
+  border-color: rgba(61,111,212,0.5);
+  background: rgba(61,111,212,0.06);
+  color: rgba(61,111,212,0.7);
+}
+
+.fd-drop-target.show svg { opacity: 1; stroke: #5b8de8; }
+
+/* ---- drag-out clone ---- */
+.fd-drag-out {
+  right: auto; left: 220px; top: 110px;
+}
+
+/* ---- progress dots ---- */
+.fd-progress {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.fd-prog-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--paper3);
+  transition: background 0.3s, transform 0.3s;
+  cursor: pointer;
+}
+
+.fd-prog-dot.active {
+  background: var(--amber);
+  transform: scale(1.3);
+}
+
+.fd-replay {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: 1px solid var(--paper3);
+  border-radius: 100px; padding: 4px 12px;
+  font-size: 0.72rem; font-family: 'Geist', sans-serif;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  margin-left: 8px;
+}
+
+.fd-replay:hover { border-color: var(--muted); color: var(--ink); }
+
+/* ======================================================= */
+
+/* ANIMATIONS */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.reveal {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding: 60px 28px 0; }
+  .hero-right { align-items: flex-start; padding-bottom: 60px; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .keyboard-inner, .permissions-section { grid-template-columns: 1fr; gap: 48px; }
+  .how-section { padding: 60px 24px; }
+  nav { padding: 0 24px; }
+  nav ul { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="logo-mark">
+      <img src="icon_1024.png" alt="FileShelf icon">
+    </div>
+    FileShelf
+  </a>
+  <ul>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#shortcuts">Shortcuts</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+  <a href="#download" class="nav-dl">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download Free
+  </a>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">
+      <span class="eyebrow-dot"></span>
+      macOS Utility &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Free
+    </div>
+    <h1 class="hero-h1">A clipboard<br>for your <em>files.</em></h1>
+    <p class="hero-tagline">Always floating. Always ready.</p>
+    <p class="hero-body">
+      FileShelf is a lightweight floating panel that lives above every window on your Mac. Drop files in from Finder, VS Code, Cursor — drag them out to any app. Or click a file to copy it straight to your clipboard.
+    </p>
+    <div class="hero-ctas">
+      <a href="#download" class="btn-dl">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download for Mac
+      </a>
+      <a href="#how" class="btn-ghost">See how it works →</a>
+    </div>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="meta-chip-dot"></span>macOS 12+</div>
+      <div class="meta-chip"><span class="meta-chip-dot"></span>Apple Silicon & Intel</div>
+      <div class="meta-chip"><span class="meta-chip-dot"></span>No account needed</div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+
+    <!-- App icon -->
+    <div class="hero-icon-wrap">
+      <img src="icon_1024.png" alt="FileShelf" class="hero-icon">
+    </div>
+
+    <!-- Shelf widget — the app itself -->
+    <div class="shelf-widget">
+      <div class="sw-bar">
+        <div class="tl tl-r"></div>
+        <div class="tl tl-y"></div>
+        <div class="tl tl-g"></div>
+      </div>
+      <div class="sw-files">
+        <div class="sw-file">
+          <div class="close-x">×</div>
+          <div class="sw-file-icon fi-orange">
+            <div class="doc-body"></div><div class="doc-fold"></div>
+            <div class="doc-lines"><div class="doc-line"></div><div class="doc-line"></div><div class="doc-line"></div></div>
+          </div>
+          <span class="sw-file-name">context.md</span>
+        </div>
+        <div class="sw-file selected">
+          <div class="close-x">×</div>
+          <div class="sw-file-icon fi-green">
+            <div class="doc-body"></div><div class="doc-fold"></div>
+            <div class="doc-lines"><div class="doc-line"></div><div class="doc-line"></div><div class="doc-line"></div></div>
+          </div>
+          <span class="sw-file-name">notes.txt</span>
+        </div>
+        <div class="sw-file">
+          <div class="close-x">×</div>
+          <div class="sw-file-icon fi-blue">
+            <div class="doc-body"></div><div class="doc-fold"></div>
+            <div class="doc-lines"><div class="doc-line"></div><div class="doc-line"></div><div class="doc-line"></div></div>
+          </div>
+          <span class="sw-file-name">setup.md</span>
+        </div>
+        <div class="sw-file">
+          <div class="close-x">×</div>
+          <div class="sw-file-icon fi-screenshot">
+            <div class="doc-body"></div><div class="doc-fold"></div><div class="doc-thumb"></div>
+          </div>
+          <span class="sw-file-name">Screensh...</span>
+        </div>
+        <div class="sw-file">
+          <div class="close-x">×</div>
+          <div class="sw-file-icon fi-orange">
+            <div class="doc-body"></div><div class="doc-fold"></div>
+            <div class="doc-lines"><div class="doc-line"></div><div class="doc-line"></div><div class="doc-line"></div></div>
+          </div>
+          <span class="sw-file-name">report.md</span>
+        </div>
+      </div>
+      <div class="sw-empty-space"><div class="sw-indicator-dot"></div></div>
+      <div class="sw-actions">
+        <div class="sw-btns">
+          <div class="sw-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Zip
+          </div>
+          <div class="sw-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8">
+              <circle cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/>
+              <path d="M8.5 15.5a5 5 0 0 1 7 0"/>
+              <path d="M5.5 12.5a9 9 0 0 1 13 0"/>
+              <path d="M2.5 9.5a13 13 0 0 1 19 0"/>
+            </svg>
+            AirDrop
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shelf-kbd-hint">
+      Press <kbd>⌥ Space</kbd> from any app to show or hide
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section reveal" id="how">
+  <div class="how-inner">
+    <div class="how-header">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">See it in action.<br><em>Four steps.</em></h2>
+    </div>
+    <div class="flow-demo" id="flowDemo">
+
+      <!-- Step label -->
+      <div class="fd-step-label">
+        <div class="fd-step-badge" id="stepBadge">Step 1 of 4</div>
+        <div class="fd-step-text" id="stepText">Drag a file from Finder</div>
+      </div>
+
+      <!-- Main stage -->
+      <div class="fd-stage">
+
+        <!-- SOURCE: Realistic macOS Finder window -->
+        <div class="fd-finder" id="fdFinder">
+          <!-- Titlebar -->
+          <div class="fd-win-bar">
+            <span class="fd-dot fd-dot-r"></span>
+            <span class="fd-dot fd-dot-y"></span>
+            <span class="fd-dot fd-dot-g"></span>
+            <div class="fd-finder-toolbar">
+              <div class="fd-toolbar-nav">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div class="fd-toolbar-title">Documents</div>
+              <div class="fd-toolbar-search">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+            </div>
+          </div>
+          <!-- Body: sidebar + files -->
+          <div class="fd-finder-body">
+            <!-- Sidebar -->
+            <div class="fd-finder-sidebar">
+              <div class="fd-sb-section">Favourites</div>
+              <div class="fd-sb-item active">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                Home
+              </div>
+              <div class="fd-sb-item">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Desktop
+              </div>
+              <div class="fd-sb-item">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                Documents
+              </div>
+              <div class="fd-sb-item">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Downloads
+              </div>
+            </div>
+            <!-- File grid -->
+            <div class="fd-finder-grid">
+              <div class="fd-grid-file fd-file-orange fd-draggable" id="sourceFile">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>report.md</span>
+              </div>
+              <div class="fd-grid-file fd-file-blue">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>notes.txt</span>
+              </div>
+              <div class="fd-grid-file fd-file-green">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>data.csv</span>
+              </div>
+              <div class="fd-grid-file fd-file-blue">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>index.js</span>
+              </div>
+              <div class="fd-grid-file fd-file-green">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>readme.md</span>
+              </div>
+              <div class="fd-grid-file fd-file-orange">
+                <div class="fd-grid-icon">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                  <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+                </div>
+                <span>config.json</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DRAGGING FILE (animated) -->
+        <div class="fd-dragging-file fd-file-orange" id="draggingFile">
+          <div class="fd-ficon-body"></div>
+          <div class="fd-ficon-fold"></div>
+          <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+          <span>report.md</span>
+        </div>
+
+        <!-- FileShelf panel -->
+        <div class="fd-shelf" id="fdShelf">
+          <div class="fd-shelf-bar">
+            <span class="fd-dot fd-dot-r"></span>
+            <span class="fd-dot fd-dot-y op"></span>
+            <span class="fd-dot fd-dot-g op"></span>
+          </div>
+          <!-- files grid — hidden until a file is dropped -->
+          <div class="fd-shelf-files" id="shelfFiles">
+            <div class="fd-shelf-file fd-new-file" id="newShelfFile">
+              <div class="fd-sficon fd-file-orange"></div>
+              <span>report.md</span>
+            </div>
+          </div>
+          <!-- indicator dot — only shows when files present -->
+          <div class="fd-shelf-dot-row" id="shelfDotRow" style="display:none">
+            <div class="fd-shelf-indicator"></div>
+          </div>
+          <!-- drop zone — hides when files arrive -->
+          <div class="fd-shelf-drop" id="shelfDrop">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V8M8 12l4 4 4-4"/><rect x="3" y="3" width="18" height="18" rx="3" stroke-width="1.5"/></svg>
+            <span>Drop files here</span>
+            <small>⌥Space to toggle</small>
+          </div>
+          <div class="fd-shelf-actions">
+            <div class="fd-shelf-btn">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Zip
+            </div>
+            <div class="fd-shelf-btn">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2">
+                <circle cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/>
+                <path d="M8.5 15.5a5 5 0 0 1 7 0"/>
+                <path d="M5.5 12.5a9 9 0 0 1 13 0"/>
+                <path d="M2.5 9.5a13 13 0 0 1 19 0"/>
+              </svg>
+              AirDrop
+            </div>
+          </div>
+        </div>
+
+        <!-- DESTINATION: Mail compose window -->
+        <div class="fd-mail" id="fdVscode">
+          <div class="fd-win-bar">
+            <span class="fd-dot fd-dot-r"></span>
+            <span class="fd-dot fd-dot-y"></span>
+            <span class="fd-dot fd-dot-g"></span>
+            <span class="fd-win-title">New Message</span>
+          </div>
+          <div class="fd-mail-body">
+            <div class="fd-mail-field">
+              <span class="fd-mail-label">To</span>
+              <span class="fd-mail-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="50313c352810333f3d20313e297e333f3d">[email&#160;protected]</a></span>
+            </div>
+            <div class="fd-mail-field">
+              <span class="fd-mail-label">Subject</span>
+              <span class="fd-mail-val">Q3 Report</span>
+            </div>
+            <div class="fd-mail-divider"></div>
+            <div class="fd-mail-compose">
+              <div class="fd-mail-line w70"></div>
+              <div class="fd-mail-line w50"></div>
+              <div class="fd-mail-line w85"></div>
+              <!-- attachment drop area -->
+              <div class="fd-drop-target" id="vsDropTarget">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                Drop attachment
+              </div>
+              <!-- attachment pill after drop -->
+              <div class="fd-mail-attachment" id="vsDropped">
+                <div class="fd-attach-icon fd-file-orange">
+                  <div class="fd-ficon-body"></div>
+                  <div class="fd-ficon-fold"></div>
+                </div>
+                <span>report.md</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outgoing dragging file -->
+        <div class="fd-dragging-file fd-file-orange fd-drag-out" id="draggingFileOut">
+          <div class="fd-ficon-body"></div>
+          <div class="fd-ficon-fold"></div>
+          <div class="fd-ficon-lines"><div></div><div></div><div></div></div>
+          <span>report.md</span>
+        </div>
+
+      </div><!-- /stage -->
+
+      <!-- Progress dots -->
+      <div class="fd-progress">
+        <div class="fd-prog-dot active" data-step="0"></div>
+        <div class="fd-prog-dot" data-step="1"></div>
+        <div class="fd-prog-dot" data-step="2"></div>
+        <div class="fd-prog-dot" data-step="3"></div>
+        <button class="fd-replay" id="fdReplay" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          Replay
+        </button>
+      </div>
+
+    </div><!-- /flow-demo -->
+  </div><!-- /how-inner -->
+</section><!-- /how it works -->
+
+<!-- FEATURES -->
+<section class="features-section reveal" id="features">
+  <div class="section-head">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need.<br><em>Nothing you don't.</em></h2>
+  </div>
+  <div class="features-grid">
+    <div class="feat">
+      <div class="feat-icon">🪄</div>
+      <div class="feat-title">Auto-show on drag</div>
+      <p class="feat-body">Start dragging any file and hold for 1.5 seconds — FileShelf floats up automatically, no keyboard, no interruption.</p>
+      <div class="feat-kbd">hold drag · 1.5s</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">⌨️</div>
+      <div class="feat-title">Global shortcut</div>
+      <p class="feat-body">Toggle the shelf from any app, any space, any moment with ⌥Space. No accessibility permissions needed.</p>
+      <div class="feat-kbd"><kbd>⌥Space</kbd></div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📋</div>
+      <div class="feat-title">Click to copy</div>
+      <p class="feat-body">Click any file on the shelf to copy it to your clipboard. Then ⌘V it into any app — no drag required.</p>
+      <div class="feat-kbd">click → ⌘V anywhere</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🚀</div>
+      <div class="feat-title">Launches at login</div>
+      <p class="feat-body">Set FileShelf to start automatically when you log in — your shelf is ready before you even open your first app.</p>
+      <div class="feat-kbd">right-click menu bar icon</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">💾</div>
+      <div class="feat-title">Persists across relaunches</div>
+      <p class="feat-body">Files stay on the shelf until you remove them — even after quitting and reopening the app. Nothing gets lost.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🗜️</div>
+      <div class="feat-title">Zip & AirDrop built in</div>
+      <p class="feat-body">Compress selected files into a named ZIP (saved to /tmp) or AirDrop them to any nearby device — right from the shelf.</p>
+      <div class="feat-kbd">action bar</div>
+    </div>
+  </div>
+</section>
+
+<!-- SHORTCUTS -->
+<section class="keyboard-section reveal" id="shortcuts">
+  <div class="keyboard-inner">
+    <div>
+      <div class="kb-section-label">Keyboard shortcuts</div>
+      <h2 class="kb-title">Built for<br><em>keyboard people.</em></h2>
+      <p class="kb-body">
+        Every action on the shelf has a shortcut. Browse files, multi-select, remove, compress — all without touching the mouse. The shelf fits your workflow; it doesn't create a new one.
+      </p>
+    </div>
+    <div>
+      <div class="shortcuts-table">
+        <div class="sc-row">
+          <span class="sc-action">Show / hide shelf</span>
+          <div class="sc-keys">
+            <span class="sc-key hi">⌥Space</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Auto-show on drag</span>
+          <div class="sc-keys">
+            <span class="sc-key">hold drag</span>
+            <span class="sc-key" style="font-size:0.6rem;">1.5s</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Launch at login</span>
+          <div class="sc-keys">
+            <span class="sc-key">right-click</span>
+            <span class="sc-key">menu bar</span>
+          </div>
+        </div>
+        <div class="sc-divider"></div>
+        <div class="sc-row">
+          <span class="sc-action">Copy file to clipboard</span>
+          <div class="sc-keys">
+            <span class="sc-key">Click</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Multi-select</span>
+          <div class="sc-keys">
+            <span class="sc-key hi">⌘</span>
+            <span class="sc-key">+ Click</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Select all</span>
+          <div class="sc-keys">
+            <span class="sc-key hi">⌘A</span>
+          </div>
+        </div>
+        <div class="sc-divider"></div>
+        <div class="sc-row">
+          <span class="sc-action">Remove hovered file</span>
+          <div class="sc-keys">
+            <span class="sc-key">hover →</span>
+            <span class="sc-key hi">×</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Remove selected</span>
+          <div class="sc-keys">
+            <span class="sc-key hi">⌘⌫</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Clear all files</span>
+          <div class="sc-keys">
+            <span class="sc-key" style="font-size:0.6rem;">(none selected)</span>
+            <span class="sc-key hi">⌘⌫</span>
+          </div>
+        </div>
+        <div class="sc-row">
+          <span class="sc-action">Quit</span>
+          <div class="sc-keys">
+            <span class="sc-key hi">⌘Q</span>
+            <span class="sc-key" style="font-size:0.6rem;">when focused</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PERMISSIONS -->
+<section class="permissions-section reveal">
+  <div>
+    <div class="section-label">Privacy & permissions</div>
+    <h2 class="section-title">Minimal footprint.<br><em>Zero trust required.</em></h2>
+    <p style="margin-top:18px;font-size:0.9rem;color:var(--muted);font-weight:300;line-height:1.75;max-width:380px;">
+      FileShelf asks for only what it needs — and tells you exactly why. You can deny everything; it still works.
+    </p>
+  </div>
+  <div class="perm-list">
+    <div class="perm-item">
+      <div class="perm-icon pi-opt">⌨️</div>
+      <div>
+        <div class="perm-title">Accessibility <span class="perm-tag tag-opt">Optional</span></div>
+        <div class="perm-desc">Enables the auto-show on drag trigger. FileShelf prompts once on first launch — deny it and everything else still works perfectly.</div>
+      </div>
+    </div>
+    <div class="perm-item">
+      <div class="perm-icon pi-no">🌐</div>
+      <div>
+        <div class="perm-title">Network access <span class="perm-tag tag-no">Never</span></div>
+        <div class="perm-desc">No network requests — not on launch, not ever. Your files never leave your machine.</div>
+      </div>
+    </div>
+    <div class="perm-item">
+      <div class="perm-icon pi-no">📁</div>
+      <div>
+        <div class="perm-title">File modification <span class="perm-tag tag-no">Never</span></div>
+        <div class="perm-desc">Files are referenced only — never moved, copied, or modified. The shelf is a scratch space, not storage.</div>
+      </div>
+    </div>
+    <div class="perm-item">
+      <div class="perm-icon pi-no">⚙️</div>
+      <div>
+        <div class="perm-title">Background processes <span class="perm-tag tag-no">Never</span></div>
+        <div class="perm-desc">No launch daemons, no helper processes, no background activity beyond the app itself running in your menu bar.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="download-section reveal" id="download">
+  <div class="download-inner">
+    <div class="section-label" style="text-align:center;margin-bottom:20px;">Download</div>
+    <h2 class="dl-title">Free.<br><em>Forever.</em></h2>
+    <p class="dl-body">
+      No trial. No subscription. No account. FileShelf is a small tool that makes your Mac meaningfully better — and it costs nothing.
+    </p>
+    <a href="#" class="btn-dl" style="font-size:0.97rem;padding:15px 34px;display:inline-flex;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download FileShelf 1.0
+    </a>
+    <div class="dl-specs">
+      <div class="spec">macOS 12 Monterey or later</div>
+      <div class="spec">Apple Silicon & Intel</div>
+      <div class="spec">Under 5 MB</div>
+      <div class="spec">No account needed</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <a href="#" class="ft-logo">
+    <div class="logo-mark">
+      <img src="icon_1024.png" alt="FileShelf icon">
+    </div>
+    FileShelf
+  </a>
+  <div class="ft-center">
+    <div class="ft-links">
+      <a href="privacy.html">Privacy</a>
+      <a href="https://chai4.me/raihanpsse" target="_blank" class="ft-bmc" title="Buy me a coffee">
+        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-white.png" alt="Buy Me A Coffee"/>
+      </a>
+      <a href="mailto:raihan.ps.se@gmail.com">Support</a>
+    </div>
+  </div>
+  <span class="ft-copy">© 2026</span>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+/* ---- Flow Demo Animation Engine ---- */
+(function() {
+  const steps = [
+    { badge: 'Step 1 of 4', text: 'Drag a file from Finder' },
+    { badge: 'Step 2 of 4', text: 'FileShelf appears automatically' },
+    { badge: 'Step 3 of 4', text: 'Drop the file onto the shelf' },
+    { badge: 'Step 4 of 4', text: 'Drag it out to Mail — attach instantly' }
+  ];
+
+  const badge        = document.getElementById('stepBadge');
+  const stepText     = document.getElementById('stepText');
+  const shelf        = document.getElementById('fdShelf');
+  const dragFile     = document.getElementById('draggingFile');
+  const dragOut      = document.getElementById('draggingFileOut');
+  const newFile      = document.getElementById('newShelfFile');
+  const shelfDrop    = document.querySelector('.fd-shelf-drop');
+  const shelfFiles   = document.getElementById('shelfFiles');
+  const shelfDotRow  = document.getElementById('shelfDotRow');
+  const mailWin      = document.getElementById('fdVscode');
+  const vsDropTarget = document.getElementById('vsDropTarget');
+  const vsDropped    = document.getElementById('vsDropped');
+  const dots         = document.querySelectorAll('.fd-prog-dot');
+  const replay       = document.getElementById('fdReplay');
+  const stage        = document.querySelector('.fd-stage');
+  const sourceFile   = document.getElementById('sourceFile');
+
+  let timers = [];
+  function t(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+  function setStep(i) {
+    badge.textContent = steps[i].badge;
+    stepText.style.opacity = '0';
+    setTimeout(() => { stepText.textContent = steps[i].text; stepText.style.opacity = '1'; }, 150);
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === i));
+  }
+
+  /* Get center of an element relative to stage top-left, offset by half the drag icon size */
+  function pos(el, offsetX, offsetY) {
+    const sr = stage.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    return {
+      x: Math.round(er.left - sr.left + er.width  / 2 + (offsetX || 0)),
+      y: Math.round(er.top  - sr.top  + er.height / 2 + (offsetY || 0))
+    };
+  }
+
+  /* Place drag icon at position (centered on pos) */
+  function place(el, x, y, animate) {
+    const hw = 26; /* half of 52px drag icon width */
+    const hh = 22; /* half of ~44px drag icon height */
+    const left = x - hw;
+    const top  = y - hh;
+    if (!animate) {
+      el.style.cssText = `opacity:0;left:${left}px;top:${top}px;transition:none`;
+    } else {
+      el.style.cssText = `opacity:1;left:${left}px;top:${top}px;transition:left ${animate}ms ease,top ${animate}ms ease`;
+    }
+  }
+
+  function resetAll() {
+    timers.forEach(clearTimeout); timers = [];
+    shelf.classList.remove('visible');
+    mailWin.classList.remove('visible');
+    dragFile.style.cssText = 'opacity:0;left:0;top:0;transition:none';
+    dragOut.style.cssText  = 'opacity:0;left:0;top:0;transition:none';
+    newFile.classList.remove('show');
+    shelfDrop.classList.remove('highlight');
+    shelfDrop.style.display = '';
+    shelfFiles.style.display = 'none';
+    shelfDotRow.style.display = 'none';
+    vsDropTarget.classList.remove('show');
+    vsDropped.classList.remove('show');
+    sourceFile.classList.remove('dragging-source');
+    replay.style.display = 'none';
+  }
+
+  function play() {
+    resetAll();
+    setStep(0);
+
+    /* -- Step 1: clone lifts off source file in Finder -- */
+    t(() => {
+      const src = pos(sourceFile);
+      sourceFile.classList.add('dragging-source');
+      place(dragFile, src.x, src.y, false);
+      t(() => { dragFile.style.opacity = '1'; }, 50);
+    }, 400);
+
+    /* -- Step 2: file drifts toward shelf, shelf springs open -- */
+    t(() => {
+      setStep(1);
+      /* move to just left of shelf */
+      const src = pos(sourceFile);
+      const sh  = pos(shelf);
+      place(dragFile, sh.x - 20, sh.y - 10, false);
+      dragFile.style.cssText = `opacity:1;left:${parseInt(dragFile.style.left)}px;top:${parseInt(dragFile.style.top)}px;transition:left 800ms ease,top 700ms ease`;
+      /* re-trigger with actual shelf-approach coords */
+      const shR = stage.getBoundingClientRect();
+      const shEl = shelf.getBoundingClientRect();
+      const targetX = Math.round(shEl.left - shR.left + shEl.width / 2) - 26;
+      const targetY = Math.round(shEl.top  - shR.top  + 20) - 22;
+      t(() => {
+        dragFile.style.left = targetX + 'px';
+        dragFile.style.top  = targetY + 'px';
+      }, 10);
+      t(() => shelf.classList.add('visible'), 300);
+    }, 1900);
+
+    /* -- Step 3: file glides into drop zone, highlights, lands -- */
+    t(() => {
+      setStep(2);
+      const sr  = stage.getBoundingClientRect();
+      const sdR = shelfDrop.getBoundingClientRect();
+      const dropX = Math.round(sdR.left - sr.left + sdR.width  / 2) - 26;
+      const dropY = Math.round(sdR.top  - sr.top  + sdR.height / 2) - 22;
+      dragFile.style.transition = 'left 500ms ease, top 500ms ease';
+      dragFile.style.left = dropX + 'px';
+      dragFile.style.top  = dropY + 'px';
+      t(() => shelfDrop.classList.add('highlight'), 350);
+      t(() => {
+        /* File lands: hide drop zone, show file grid */
+        dragFile.style.opacity = '0';
+        shelfDrop.classList.remove('highlight');
+        shelfDrop.style.display = 'none';
+        shelfFiles.style.display = 'grid';
+        shelfDotRow.style.display = 'flex';
+        newFile.classList.add('show');
+      }, 700);
+    }, 3500);
+
+    /* -- Step 4: mail appears, drag out FROM shelf file TO mail drop target -- */
+    t(() => {
+      setStep(3);
+      mailWin.classList.add('visible');
+
+      t(() => {
+        const sr = stage.getBoundingClientRect();
+
+        /* Start: center of the landed file on the shelf */
+        const fileR  = newFile.getBoundingClientRect();
+        const startX = Math.round(fileR.left - sr.left + fileR.width  / 2) - 26;
+        const startY = Math.round(fileR.top  - sr.top  + fileR.height / 2) - 22;
+
+        /* End: center of mail drop target */
+        const dtR  = vsDropTarget.getBoundingClientRect();
+        const endX = Math.round(dtR.left - sr.left + dtR.width  / 2) - 26;
+        const endY = Math.round(dtR.top  - sr.top  + dtR.height / 2) - 22;
+
+        /* Spawn on top of shelf file, invisible */
+        dragOut.style.cssText = `opacity:0;left:${startX}px;top:${startY}px;transition:none`;
+        t(() => {
+          /* Fade in on the shelf file */
+          dragOut.style.opacity = '1';
+          vsDropTarget.classList.add('show');
+          t(() => {
+            /* Glide across to mail drop target */
+            dragOut.style.cssText = `opacity:1;left:${endX}px;top:${endY}px;transition:left 700ms ease,top 700ms ease`;
+            t(() => {
+              dragOut.style.opacity = '0';
+              vsDropTarget.classList.remove('show');
+              vsDropped.classList.add('show');
+              replay.style.display = 'inline-flex';
+              dots.forEach(d => d.classList.remove('active'));
+            }, 750);
+          }, 300);
+        }, 100);
+      }, 700);
+    }, 5600);
+  }
+
+  replay.addEventListener('click', play);
+  dots.forEach((d, i) => d.addEventListener('click', () => { if (i === 0) play(); }));
+
+  const heroObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { play(); heroObs.disconnect(); }
+  }, { threshold: 0.3 });
+  heroObs.observe(stage);
+
+})();
+</script>
+</body>
+</html>
